@@ -25,59 +25,85 @@ def parse_exclusion_words(exclusion_text: str) -> Set[str]:
 
 def clean_prompt_with_exclusions(prompt: str, exclusion_words: Set[str]) -> str:
     """
-    Nettoie un prompt en retirant les mots de la liste d'exclusion.
+    Nettoie un prompt en supprimant les mots d'exclusion.
     
     Args:
-        prompt: Le prompt à nettoyer
-        exclusion_words: Ensemble des mots à exclure
+        prompt: Le prompt original
+        exclusion_words: Set des mots à exclure
         
     Returns:
-        str: Le prompt nettoyé
+        Prompt nettoyé
     """
     if not prompt or not exclusion_words:
         return prompt
     
-    # Diviser le prompt en tokens (gérer les virgules, parenthèses, etc.)
-    # Pattern pour capturer les mots tout en préservant la ponctuation
-    tokens = re.findall(r'\([^)]*\)|\[[^\]]*\]|[^,\s]+|[,\s]+', prompt)
+    result = prompt
     
-    cleaned_tokens = []
-    for token in tokens:
-        # Si c'est un token de ponctuation/espace, on le garde
-        if re.match(r'^[,\s]+$', token):
-            cleaned_tokens.append(token)
-            continue
-            
-        # Si c'est une expression entre parenthèses/crochets, on traite l'intérieur
-        if token.startswith('(') and token.endswith(')'):
-            inner_content = token[1:-1]
-            cleaned_inner = clean_prompt_with_exclusions(inner_content, exclusion_words)
-            if cleaned_inner.strip():  # Ne garder que si il reste du contenu
-                cleaned_tokens.append(f'({cleaned_inner})')
-            continue
-            
-        if token.startswith('[') and token.endswith(']'):
-            inner_content = token[1:-1]
-            cleaned_inner = clean_prompt_with_exclusions(inner_content, exclusion_words)
-            if cleaned_inner.strip():
-                cleaned_tokens.append(f'[{cleaned_inner}]')
-            continue
+    # Traiter d'abord les expressions entre parenthèses et crochets
+    def clean_bracketed_content(match):
+        bracket_type = match.group(1)  # '(' ou '['
+        content = match.group(2)
+        closing_bracket = ')' if bracket_type == '(' else ']'
         
-        # Pour les mots normaux, vérifier s'ils sont dans la liste d'exclusion
-        word_lower = token.lower().strip()
-        if word_lower not in exclusion_words:
-            cleaned_tokens.append(token)
+        # Nettoyer récursivement le contenu
+        cleaned_content = clean_prompt_with_exclusions(content, exclusion_words)
+        
+        # Si le contenu nettoyé est vide, supprimer complètement
+        if not cleaned_content.strip():
+            return ''
+        
+        return f'{bracket_type}{cleaned_content}{closing_bracket}'
     
-    # Reconstituer le prompt et nettoyer les espaces/virgules en trop
-    result = ''.join(cleaned_tokens)
+    # Pattern pour capturer les expressions entre parenthèses/crochets avec leur contenu
+    result = re.sub(r'([\(\[])(.*?)([\)\]])', clean_bracketed_content, result)
     
-    # Nettoyer les virgules multiples et les espaces
-    result = re.sub(r',\s*,+', ',', result)  # Virgules multiples
-    result = re.sub(r'^\s*,\s*', '', result)  # Virgule au début
-    result = re.sub(r'\s*,\s*$', '', result)  # Virgule à la fin
+    # Diviser le prompt en segments séparés par des virgules
+    segments = [segment.strip() for segment in result.split(',')]
+    cleaned_segments = []
+    
+    for segment in segments:
+        if not segment:
+            continue
+            
+        # Vérifier si ce segment (ou une partie) doit être exclu
+        segment_should_be_kept = True
+        segment_lower = segment.lower()
+        
+        # Vérifier chaque mot/expression d'exclusion
+        for exclusion in exclusion_words:
+            exclusion_lower = exclusion.lower()
+            
+            # Vérification exacte du segment complet
+            if segment_lower == exclusion_lower:
+                segment_should_be_kept = False
+                break
+            
+            # Vérification si l'expression d'exclusion est contenue dans le segment
+            # On utilise des word boundaries pour éviter les correspondances partielles
+            # mais on permet les espaces dans l'expression
+            exclusion_pattern = r'\b' + re.escape(exclusion_lower) + r'\b'
+            if re.search(exclusion_pattern, segment_lower):
+                # Remplacer l'expression trouvée par une chaîne vide
+                segment = re.sub(exclusion_pattern, '', segment, flags=re.IGNORECASE)
+                segment = segment.strip()
+                
+                # Si le segment devient vide après suppression, ne pas le garder
+                if not segment:
+                    segment_should_be_kept = False
+                    break
+        
+        if segment_should_be_kept and segment.strip():
+            cleaned_segments.append(segment.strip())
+    
+    # Reconstituer le prompt
+    result = ', '.join(cleaned_segments)
+    
+    # Nettoyer les espaces multiples et autres artefacts
     result = re.sub(r'\s+', ' ', result)  # Espaces multiples
+    result = re.sub(r'\s*,\s*', ', ', result)  # Normaliser les espaces autour des virgules
+    result = result.strip().strip(',').strip()  # Supprimer les virgules en début/fin
     
-    return result.strip()
+    return result
 
 
 def process_prompt_with_exclusions(prompt: str, exclusion_text: str) -> str:
