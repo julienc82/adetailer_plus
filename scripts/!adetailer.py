@@ -320,6 +320,7 @@ class AfterDetailerScript(scripts.Script):
             all_prompts=p.all_prompts,
             i=i,
             default=p.prompt,
+            exclusions=args.ad_exclusion_words,
             replacements=prompt_sr,
         )
         negative_prompt = self._get_prompt(
@@ -327,6 +328,7 @@ class AfterDetailerScript(scripts.Script):
             all_prompts=p.all_negative_prompts,
             i=i,
             default=p.negative_prompt,
+            exclusions=args.ad_exclusion_words,
             replacements=prompt_sr,
         )
         return prompt, negative_prompt
