@@ -240,15 +240,6 @@ def one_ui_group(n: int, is_img2img: bool, webui_info: WebuiInfo):
                 + "\nIf blank, the main negative prompt is used.",
                 elem_id=eid("ad_negative_prompt"),
             )
-        with gr.Row(elem_id=eid("ad_toprow_exclusion_words")):
-            w.ad_exclusion_words = gr.Textbox(
-                value="",
-                label="ad_exclusion_words" + suffix(n),
-                show_label=False,
-                lines=3,
-                placeholder="Mots d'exclusion (un par ligne)" + suffix(n) + "\nCes mots seront supprimés automatiquement du prompt ADetailer.",
-                elem_id=eid("ad_exclusion_words"),
-            )
 
     with gr.Group():
         with gr.Accordion(
