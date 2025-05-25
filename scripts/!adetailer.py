@@ -293,6 +293,7 @@ class AfterDetailerScript(scripts.Script):
         all_prompts: list[str],
         i: int,
         default: str,
+        exclusions: str,
         replacements: list[PromptSR],
     ) -> list[str]:
         prompts = re.split(r"\s*\[SEP\]\s*", ad_prompt)
@@ -305,6 +306,9 @@ class AfterDetailerScript(scripts.Script):
 
             for pair in replacements:
                 prompts[n] = prompts[n].replace(pair.s, pair.r)
+            
+            prompts[n] = process_prompt_with_exclusions(prompts[n], exclusions)
+            
         return prompts
 
     def get_prompt(self, p, args: ADetailerArgs) -> tuple[list[str], list[str]]:
@@ -325,8 +329,6 @@ class AfterDetailerScript(scripts.Script):
             default=p.negative_prompt,
             replacements=prompt_sr,
         )
-        if args.ad_exclusion_words:
-            prompt = process_prompt_with_exclusions(prompt, args.ad_exclusion_words)
         return prompt, negative_prompt
 
     def get_seed(self, p) -> tuple[int, int]:
