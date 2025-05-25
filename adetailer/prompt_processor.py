@@ -51,14 +51,14 @@ def clean_prompt_with_exclusions(prompt: str, exclusion_words: Set[str]) -> str:
         # Si c'est une expression entre parenthèses/crochets, on traite l'intérieur
         if token.startswith('(') and token.endswith(')'):
             inner_content = token[1:-1]
-            cleaned_inner = clean_prompt(inner_content, exclusion_words)
+            cleaned_inner = clean_prompt_with_exclusions(inner_content, exclusion_words)
             if cleaned_inner.strip():  # Ne garder que si il reste du contenu
                 cleaned_tokens.append(f'({cleaned_inner})')
             continue
             
         if token.startswith('[') and token.endswith(']'):
             inner_content = token[1:-1]
-            cleaned_inner = clean_prompt(inner_content, exclusion_words)
+            cleaned_inner = clean_prompt_with_exclusions(inner_content, exclusion_words)
             if cleaned_inner.strip():
                 cleaned_tokens.append(f'[{cleaned_inner}]')
             continue
