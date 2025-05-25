@@ -37,43 +37,45 @@ def clean_prompt_with_exclusions(prompt: str, exclusion_words: Set[str]) -> str:
     if not prompt or not exclusion_words:
         return prompt
     
-    # Fonction pour vérifier si un mot doit être exclu
-    def should_exclude(word: str) -> bool:
-        return word.lower() in exclusion_words
+    # Diviser le prompt en tokens (gérer les virgules, parenthèses, etc.)
+    # Pattern pour capturer les mots tout en préservant la ponctuation
+    tokens = re.findall(r'\([^)]*\)|\[[^\]]*\]|[^,\s]+|[,\s]+', prompt)
     
-    # Traiter le prompt par segments (entre virgules)
-    segments = prompt.split(',')
-    cleaned_segments = []
-    
-    for segment in segments:
-        # Séparer les mots tout en gardant la ponctuation et les espaces
-        words = re.findall(r'\S+|\s+', segment)
-        
-        cleaned_words = []
-        for word in words:
-            # Si c'est un espace ou de la ponctuation, le garder
-            if word.isspace() or not word.strip():
-                cleaned_words.append(word)
-                continue
+    cleaned_tokens = []
+    for token in tokens:
+        # Si c'est un token de ponctuation/espace, on le garde
+        if re.match(r'^[,\s]+$', token):
+            cleaned_tokens.append(token)
+            continue
             
-            # Extraire le mot sans ponctuation pour la comparaison
-            word_clean = re.sub(r'[^\w\s-]', '', word)
+        # Si c'est une expression entre parenthèses/crochets, on traite l'intérieur
+        if token.startswith('(') and token.endswith(')'):
+            inner_content = token[1:-1]
+            cleaned_inner = clean_prompt(inner_content, exclusion_words)
+            if cleaned_inner.strip():  # Ne garder que si il reste du contenu
+                cleaned_tokens.append(f'({cleaned_inner})')
+            continue
             
-            # Si le mot n'est pas dans la liste d'exclusion, le garder
-            if not should_exclude(word_clean):
-                cleaned_words.append(word)
+        if token.startswith('[') and token.endswith(']'):
+            inner_content = token[1:-1]
+            cleaned_inner = clean_prompt(inner_content, exclusion_words)
+            if cleaned_inner.strip():
+                cleaned_tokens.append(f'[{cleaned_inner}]')
+            continue
         
-        # Reconstruire le segment
-        cleaned_segment = ''.join(cleaned_words).strip()
-        if cleaned_segment:
-            cleaned_segments.append(cleaned_segment)
+        # Pour les mots normaux, vérifier s'ils sont dans la liste d'exclusion
+        word_lower = token.lower().strip()
+        if word_lower not in exclusion_words:
+            cleaned_tokens.append(token)
     
-    # Rejoindre les segments avec des virgules
-    result = ', '.join(cleaned_segments)
+    # Reconstituer le prompt et nettoyer les espaces/virgules en trop
+    result = ''.join(cleaned_tokens)
     
-    # Nettoyer les espaces multiples
-    result = re.sub(r'\s+', ' ', result)
-    result = re.sub(r'\s*,\s*', ', ', result)
+    # Nettoyer les virgules multiples et les espaces
+    result = re.sub(r',\s*,+', ',', result)  # Virgules multiples
+    result = re.sub(r'^\s*,\s*', '', result)  # Virgule au début
+    result = re.sub(r'\s*,\s*$', '', result)  # Virgule à la fin
+    result = re.sub(r'\s+', ' ', result)  # Espaces multiples
     
     return result.strip()
 
