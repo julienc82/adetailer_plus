@@ -77,6 +77,7 @@ from modules.processing import (
 )
 from modules.sd_samplers import all_samplers
 from modules.shared import cmd_opts, opts, state
+from adetailer.prompt_processor import process_prompt_with_exclusions
 
 if TYPE_CHECKING:
     from fastapi import FastAPI
@@ -324,7 +325,8 @@ class AfterDetailerScript(scripts.Script):
             default=p.negative_prompt,
             replacements=prompt_sr,
         )
-
+        if args.ad_exclusion_words:
+            prompt = process_prompt_with_exclusions(prompt, args.ad_exclusion_words)
         return prompt, negative_prompt
 
     def get_seed(self, p) -> tuple[int, int]:
