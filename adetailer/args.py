@@ -58,7 +58,6 @@ class ADetailerArgs(BaseModel, extra=Extra.forbid):
     ad_model_classes: str = ""
     ad_tab_enable: bool = True
     ad_prompt: str = ""
-    ad_exclusion_words: str = ""  # Nouveau champ pour les mots d'exclusion
     ad_negative_prompt: str = ""
     ad_confidence: confloat(ge=0.0, le=1.0) = 0.3
     ad_mask_filter_method: Literal["Area", "Confidence"] = "Area"
